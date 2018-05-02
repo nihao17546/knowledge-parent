@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nihaov.knowledge.dao.IUserDAO">
+    <select id="selectByOpenId" resultType="com.nihaov.knowledge.pojo.po.UserPO">
+        select * from tb_user where open_id=#{openId}
+    </select>
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id"
+            parameterType="com.nihaov.knowledge.pojo.po.UserPO">
+        insert into tb_user(nickname,gender,head_pic,open_id,country,province,city,created_at,updated_at)
+        values(#{nickname},#{gender},#{headPic},#{openId},#{country},#{province},#{city},now(),now())
+    </insert>
+    <update id="update" parameterType="com.nihaov.knowledge.pojo.po.UserPO">
+        update tb_user set updated_at=now()
+        <if test="nickname != null">
+            ,nickname=#{nickname}
+        </if>
+        <if test="gender != null">
+            ,gender=#{gender}
+        </if>
+        <if test="headPic != null">
+            ,head_pic=#{headPic}
+        </if>
+        <if test="country != null">
+            ,country=#{country}
+        </if>
+        <if test="province != null">
+            ,province=#{province}
+        </if>
+        <if test="city != null">
+            ,city=#{city}
+        </if>
+        where open_id=#{openId}
+    </update>
+    <select id="selectByIds" resultType="com.nihaov.knowledge.pojo.po.UserPO">
+        select * from tb_user
+        where id in
+        <foreach collection="list" item="item" open="(" close=")" separator=",">
+            #{item}
+        </foreach>
+    </select>
+</mapper>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nihaov.knowledge.dao.ICatalogDAO">
+    <select id="selectLimit" resultType="com.nihaov.knowledge.pojo.po.CatalogPO">
+        select * from tb_catalog limit #{from},#{rows}
+    </select>
+    <select id="selectRecommend" resultType="com.nihaov.knowledge.pojo.po.CatalogPO">
+        select b.* from tb_recommend a,tb_catalog b where a.catalog_id=b.id
+    </select>
+    <select id="selectById" resultType="com.nihaov.knowledge.pojo.po.CatalogPO">
+        select * from tb_catalog where id=#{id}
+    </select>
+    <select id="selectBySub" resultType="com.nihaov.knowledge.pojo.po.CatalogPO">
+        select b.* from tb_sub a,tb_catalog b
+        where a.user_id=#{userId} and a.catalog_id=b.id
+        order by a.date desc limit #{from},#{rows}
+    </select>
+</mapper>

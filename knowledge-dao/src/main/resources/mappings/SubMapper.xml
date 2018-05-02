@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nihaov.knowledge.dao.ISubDAO">
+    <insert id="insert">
+        insert ignore into tb_sub(user_id,catalog_id,date)
+        values(#{userId},#{catalogId},now())
+    </insert>
+    <delete id="delete">
+        delete from tb_sub where user_Id=#{userId} and catalog_id=#{catalogId}
+    </delete>
+    <select id="selectByUserIdAndCatalogId" resultType="java.lang.Integer">
+        select id from tb_sub where user_Id=#{userId} and catalog_id=#{catalogId}
+    </select>
+</mapper>

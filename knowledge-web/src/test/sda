@@ -1,0 +1,12 @@
+docker run -i -t ubuntu /bin/bash  启动容器(i:交互方式,t:守护式容器)
+docker ps 正在运行的容器
+docker ps -a 查看所有的容器
+docker inspect
+docker run --name=容器名 -i -t ubuntu /bin/bash
+docker start -i [容器名]  重启容器
+docker rm [已停止的容器] 删除容器
+ctrl+p ctrl+q 退出交互式容器,让其在后台运行
+docker attach [容器名] 重新进入后台运行的容器
+docker run -d ubuntu /... 以后台运行方式启动容器
+docker logs -f - t --tail 容器名
+docker top 容器名
