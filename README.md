@@ -122,3 +122,27 @@ public class ConfigDemo {
 }
 ```
 #### 4.使用@Conditional,按照条件注册bean
+@Conditional是Spring4开始支持的，使用该注解只有当所有指定的条件都满足时，组件才可以注册。  
+主要用于在创建bean时增加一系列限制条件。  
+首先需要自定义一个Condition
+```Java
+public class DemoCondition implements Condition{
+     @Override
+      public boolean matches(ConditionContext arg0, AnnotatedTypeMetadata arg1) { 
+         // 自定义判断条件，返回true表示满足条件，false不满足
+         return true; 
+     }
+}
+```
+```Java
+@Configuration
+public class ConfigDemo {
+
+    @Conditional(DemoCondition.class)
+    @Bean
+    public User prototypeUser(){
+        return new User("Conditional", 18);
+    }
+    
+}
+```
