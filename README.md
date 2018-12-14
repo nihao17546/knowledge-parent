@@ -146,3 +146,50 @@ public class ConfigDemo {
     
 }
 ```
+#### 5.使用@Import注册组件
+@Import作用于类上，可以通过此方式快速注册组件。  
+```Java
+/**
+ * 向容器中注册User
+ */
+@Configuration
+@Import(User.class)
+public class DemoConfig {
+}
+```
+基于ImportSelector的方式
+```Java
+public class DemoSelector implements ImportSelector {
+    public String[] selectImports(AnnotationMetadata importingClassMetadata) {
+        return new String[]{"com.nihao.entity.User"};
+    }
+}
+```
+```Java
+@Configuration
+@Import(DemoSelector.class)
+public class DemoConfig {
+}
+```
+基于ImportBeanDefinitionRegistrar的方式
+```Java
+/**
+ * DemoImportBeanDefinitionRegistrar
+ */
+public class DemoImportBeanDefinitionRegistrar implements ImportBeanDefinitionRegistrar{
+    public void registerBeanDefinitions(
+            AnnotationMetadata importingClassMetadata,
+            BeanDefinitionRegistry registry) {
+        // new一个RootBeanDefinition
+        RootBeanDefinition rootBeanDefinition = new RootBeanDefinition(User.class);
+        // 注册一个名字叫demoUser的bean
+        registry.registerBeanDefinition("demoUser", rootBeanDefinition);
+    }
+}
+```
+```Java
+@Configuration
+@Import(DemoImportBeanDefinitionRegistrar.class)
+public class DemoConfig {
+}
+```
