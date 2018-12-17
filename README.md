@@ -193,3 +193,103 @@ public class DemoImportBeanDefinitionRegistrar implements ImportBeanDefinitionRe
 public class DemoConfig {
 }
 ```
+#### 6.使用@FactoryBean注册组件
+```Java
+public class UserFactoryBean implements FactoryBean<Color> {
+
+	//返回一个User对象，这个对象会添加到容器中
+	@Override
+	public User getObject() throws Exception {
+		return new User();
+	}
+
+	@Override
+	public Class<?> getObjectType() {
+		return User.class;
+	}
+
+	//true：这个bean是单实例，在容器中保存一份
+	//false：多实例，每次获取都会创建一个新的bean
+	@Override
+	public boolean isSingleton() {
+		return true;
+	}
+
+}
+```
+
+```Java
+@Configuration
+public class DemoConfig {
+    /**
+	 * 通过容器获取User：ApplicationContext#getBean('userFactoryBean')
+	 * 获取UserFactoryBean：ApplicationContext#getBean('&userFactoryBean')
+	 */
+	@Bean
+	public UserFactoryBean userFactoryBean(){
+		return new UserFactoryBean();
+	}
+}
+```
+
+#### 7.@Bean指定初始化和销毁方法
+方式一：
+```Java
+public class DemoBean { 
+	public void init() {
+	    // 初始化方法
+	}
+	public void destroy() {
+	    // 销毁方法
+	}
+}
+```
+```Java
+@Configuration
+public class DemoConfig { 
+    /**
+     * initMethod：指定初始化方法
+     * destroyMethod：指定销毁方法（只针对交由容器管理的bean，对于多实例的bean无效）
+     * @return 
+     */
+	@Bean(initMethod="init", destroyMethod="destroy")
+	public DemoBean demoBean(){
+		return new DemoBean();
+	}
+}
+```
+
+方式二：  
+实现InitializingBean定义初始化逻辑，实现DisposableBean定义销毁逻辑
+```Java
+@Component
+public class DemoBean implements InitializingBean, DisposableBean {
+	@Override
+	public void destroy() throws Exception {
+		// 销毁方法
+	}
+	@Override
+	public void afterPropertiesSet() throws Exception {
+		// 初始化方法
+		// 在bean创建完成并且属性赋值完成后
+	}
+}
+```
+
+方式三：  
+可以使用JSR250中定义的两个注解@PostConstruct和@PreDestroy  
+```Java
+@Component
+public class DemoBean {
+    @PostConstruct
+	public void init() {
+		// 初始化方法
+		// 在bean创建完成并且属性赋值完成后
+	}
+	@PreDestroy
+	public void destroy() {
+		// 销毁方法
+		// 在容器销毁bean之前
+	}
+}
+```
