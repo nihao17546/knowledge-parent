@@ -222,13 +222,13 @@ public class UserFactoryBean implements FactoryBean<Color> {
 @Configuration
 public class DemoConfig {
     /**
-	 * 通过容器获取User：ApplicationContext#getBean('userFactoryBean')
-	 * 获取UserFactoryBean：ApplicationContext#getBean('&userFactoryBean')
-	 */
-	@Bean
-	public UserFactoryBean userFactoryBean(){
-		return new UserFactoryBean();
-	}
+     * 通过容器获取User：ApplicationContext#getBean('userFactoryBean')
+     * 获取UserFactoryBean：ApplicationContext#getBean('&userFactoryBean')
+     */
+     @Bean
+     public UserFactoryBean userFactoryBean(){
+	return new UserFactoryBean();
+     }
 }
 ```
 
@@ -236,12 +236,12 @@ public class DemoConfig {
 方式一：
 ```Java
 public class DemoBean { 
-	public void init() {
-	    // 初始化方法
-	}
-	public void destroy() {
-	    // 销毁方法
-	}
+    public void init() {
+	// 初始化方法
+    }
+    public void destroy() {
+	// 销毁方法
+    }
 }
 ```
 ```Java
@@ -252,10 +252,10 @@ public class DemoConfig {
      * destroyMethod：指定销毁方法（只针对交由容器管理的bean，对于多实例的bean无效）
      * @return 
      */
-	@Bean(initMethod="init", destroyMethod="destroy")
-	public DemoBean demoBean(){
-		return new DemoBean();
-	}
+    @Bean(initMethod="init", destroyMethod="destroy")
+    public DemoBean demoBean(){
+	return new DemoBean();
+    }
 }
 ```
 
@@ -264,15 +264,15 @@ public class DemoConfig {
 ```Java
 @Component
 public class DemoBean implements InitializingBean, DisposableBean {
-	@Override
-	public void destroy() throws Exception {
-		// 销毁方法
-	}
-	@Override
-	public void afterPropertiesSet() throws Exception {
-		// 初始化方法
-		// 在bean创建完成并且属性赋值完成后
-	}
+    @Override
+    public void destroy() throws Exception {
+	// 销毁方法
+    }
+    @Override
+    public void afterPropertiesSet() throws Exception {
+	// 初始化方法
+	// 在bean创建完成并且属性赋值完成后
+    }
 }
 ```
 
@@ -282,14 +282,118 @@ public class DemoBean implements InitializingBean, DisposableBean {
 @Component
 public class DemoBean {
     @PostConstruct
-	public void init() {
-		// 初始化方法
-		// 在bean创建完成并且属性赋值完成后
-	}
-	@PreDestroy
-	public void destroy() {
-		// 销毁方法
-		// 在容器销毁bean之前
-	}
+    public void init() {
+	// 初始化方法
+	// 在bean创建完成并且属性赋值完成后
+    }
+    @PreDestroy
+    public void destroy() {
+	// 销毁方法
+	// 在容器销毁bean之前
+    }
 }
 ```
+方式四：  
+@BeanPostProcessor后置处理器，用于在bean初始化前后处理一些操作。  
+```Java
+@Component
+public class DemoPostProcessor implements BeanPostProcessor {
+    /**
+    * 
+    * @param bean 执行初始化的bean
+    * @param beanName 执行初始化的bean的name
+    * @return 
+    * @throws BeansException
+    */
+    public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+	// 在初始化之前执行
+	return bean;
+    }
+    /**
+    * 
+    * @param bean 执行初始化的bean
+    * @param beanName 执行初始化的bean的name
+    * @return 
+    * @throws BeansException
+    */
+    public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+	// 在初始化之后执行
+	return bean;
+    }
+}
+```
+Spring会遍历得到容器中所有的BeanPostProcessor；挨个执行beforeInitialization，一但返回null，跳出for循环，不会执行后面的BeanPostProcessor#postProcessorsBeforeInitialization  
+BeanPostProcessor在Spring底层有大量应用  
+例如：ApplicationContextAwareProcessor  
+```Java
+class ApplicationContextAwareProcessor implements BeanPostProcessor {
+    ........
+    public Object postProcessBeforeInitialization(final Object bean, String beanName) throws BeansException {
+        AccessControlContext acc = null;
+        if (System.getSecurityManager() != null 
+            && (bean instanceof EnvironmentAware 
+                || bean instanceof EmbeddedValueResolverAware 
+                || bean instanceof ResourceLoaderAware 
+                || bean instanceof ApplicationEventPublisherAware 
+                || bean instanceof MessageSourceAware 
+                // 判断bean是否实现了ApplicationContextAware
+                || bean instanceof ApplicationContextAware)) {
+            acc = this.applicationContext.getBeanFactory().getAccessControlContext();
+        }
+
+        if (acc != null) {
+            AccessController.doPrivileged(new PrivilegedAction<Object>() {
+                public Object run() {
+                    ApplicationContextAwareProcessor.this.invokeAwareInterfaces(bean);
+                    return null;
+                }
+            }, acc);
+        } else {
+            // 执行invokeAwareInterfaces给bean注入值
+            this.invokeAwareInterfaces(bean);
+        }
+
+        return bean;
+    }
+
+    private void invokeAwareInterfaces(Object bean) {
+        if (bean instanceof Aware) {
+            if (bean instanceof EnvironmentAware) {
+                ((EnvironmentAware)bean).setEnvironment(this.applicationContext.getEnvironment());
+            }
+
+            if (bean instanceof EmbeddedValueResolverAware) {
+                ((EmbeddedValueResolverAware)bean).setEmbeddedValueResolver(this.embeddedValueResolver);
+            }
+
+            if (bean instanceof ResourceLoaderAware) {
+                ((ResourceLoaderAware)bean).setResourceLoader(this.applicationContext);
+            }
+
+            if (bean instanceof ApplicationEventPublisherAware) {
+                ((ApplicationEventPublisherAware)bean).setApplicationEventPublisher(this.applicationContext);
+            }
+
+            if (bean instanceof MessageSourceAware) {
+                ((MessageSourceAware)bean).setMessageSource(this.applicationContext);
+            }
+            
+            // 给bean注入applicationContext
+            if (bean instanceof ApplicationContextAware) {
+                ((ApplicationContextAware)bean).setApplicationContext(this.applicationContext);
+            }
+        }
+
+    }
+    ......
+}
+```
+
+#### 8.自动装配
+Spring利用依赖注入（DI），完成对IOC容器中中各个组件的依赖关系赋值。  
+##### 8.1 @Autowired
+@Autowired默认优先按照类型去容器中找对应的组件，找到就赋值。（applicationContext.getBean(User.class)）
+如果找到多个相同类型的组件，再将属性的名称作为组件的id去容器中查找。（applicationContext.getBean("user")）  
+@Qualifier("user")，使用@Qualifier指定需要装配的组件的id，而不是使用属性名。  
+自动装配默认一定要将属性赋值好，如果没有找到对应的组件就会报错，可以使用@Autowired(required = false)来避免报错。  
+@Primary，使用了该注解的bean表示为首选bean，Spring进行自动装配的时候，默认使用首选的bean进行装配。  
