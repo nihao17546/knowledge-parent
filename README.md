@@ -397,3 +397,13 @@ Spring利用依赖注入（DI），完成对IOC容器中中各个组件的依赖
 @Qualifier("user")，使用@Qualifier指定需要装配的组件的id，而不是使用属性名。  
 自动装配默认一定要将属性赋值好，如果没有找到对应的组件就会报错，可以使用@Autowired(required = false)来避免报错。  
 @Primary，使用了该注解的bean表示为首选bean，Spring进行自动装配的时候，默认使用首选的bean进行装配。  
+##### 8.2 @Resource
+@Resource和@Autowired一样实现自动装配功能；默认是按照组件名称进行装配的 ；不支持@Primary功能；也不支持reqiured=false。  
+##### 8.3 @Inject
+使用@Inject需要导入javax.inject的包，和Autowired的功能一样；没有required=false的功能。
+
+#### 9.@Profile根据环境注册bean
+@Profile：指定组件在哪个环境的情况下才能被注册到容器中，不指定，任何环境下都能注册这个组件。  
+加了环境标识的bean，只有这个环境被激活的时候才能注册到容器中。默认是default环境。  
+写在配置类上，只有是指定的环境的时候，整个配置类里面的所有配置才能开始生效。  
+没有标注环境标识的bean在任何环境下都要加载。  
