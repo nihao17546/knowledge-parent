@@ -407,3 +407,114 @@ Spring利用依赖注入（DI），完成对IOC容器中中各个组件的依赖
 加了环境标识的bean，只有这个环境被激活的时候才能注册到容器中。默认是default环境。  
 写在配置类上，只有是指定的环境的时候，整个配置类里面的所有配置才能开始生效。  
 没有标注环境标识的bean在任何环境下都要加载。  
+
+#### 10.Spring单例bean的循环依赖
+循环依赖就是两个及其以上的bean互相依赖、形成闭环。  
+循环依赖分构造器循环依赖和field属性循环依赖。 
+Spring单例对象初始化分为3步：  
+1）createBeanInstance：调用对象构造方法进行实例化  
+2）populateBean：对bean的依赖属性进行填充  
+3）initializeBean：执行之前提到的afterPropertiesSet、@PostConstruct注解的等初始化方法  
+Spring使用了三级缓存来解决单例bean的循环依赖问题。  
+DefaultSingletonBeanRegistry源码分析  
+```Java
+public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements SingletonBeanRegistry {
+    // 一级缓存：单例对象cache
+    private final Map<String, Object> singletonObjects = new ConcurrentHashMap(256);
+    // 二级缓存：提前暴光的单例对象的Cache 
+    private final Map<String, Object> earlySingletonObjects = new HashMap(16);
+    // 三级缓存：单例对象工厂的cache
+    private final Map<String, ObjectFactory<?>> singletonFactories = new HashMap(16);
+    
+    /**
+    * 该方法在createBeanInstance之后调用
+    * 调用单例对象构造器创建出对象之后调用（此时还未进行populateBean和initializeBean）
+    * 将对象提前曝光、以便使用
+    * @param beanName
+    * @param singletonFactory
+    */
+    protected void addSingletonFactory(String beanName, ObjectFactory<?> singletonFactory) {
+        Assert.notNull(singletonFactory, "Singleton factory must not be null");
+        Map var3 = this.singletonObjects;
+        synchronized(this.singletonObjects) {
+            if (!this.singletonObjects.containsKey(beanName)) {
+                this.singletonFactories.put(beanName, singletonFactory);
+                this.earlySingletonObjects.remove(beanName);
+                this.registeredSingletons.add(beanName);
+            }
+
+        }
+    }
+    
+    /**
+    * 
+    * 
+    * @param beanName
+    * @param allowEarlyReference 是否允许从singletonFactories中通过getObject拿到对象
+    * @return 
+    */
+    protected Object getSingleton(String beanName, boolean allowEarlyReference) {
+        // 在创建单例bean的时候，首先从singletonObjects去获取
+        Object singletonObject = this.singletonObjects.get(beanName);
+        // isSingletonCurrentlyInCreation()判断当前单例bean是否正在创建中
+        // 如果singletonObjects中没有需要的bean、并且bean正在创建中、还未初始化完成
+        // 所谓还未初始化完成是指：例如A的构造器依赖了B对象所以先去创建B对象， 或则在A的populateBean过程中依赖了B对象，须先去创建B对象，这时的A就是处于创建中的状态
+        if (singletonObject == null && this.isSingletonCurrentlyInCreation(beanName)) {
+            Map var4 = this.singletonObjects;
+            synchronized(this.singletonObjects) {
+                // 从二级缓存中获取
+                singletonObject = this.earlySingletonObjects.get(beanName);
+                // 如果二级缓存中也没有、并且允许从singletonFactories三级缓存中获取bean
+                if (singletonObject == null && allowEarlyReference) {
+                    ObjectFactory<?> singletonFactory = (ObjectFactory)this.singletonFactories.get(beanName);
+                    if (singletonFactory != null) {
+                        singletonObject = singletonFactory.getObject();
+                        // 储存到二级缓存earlySingletonObjects中
+                        this.earlySingletonObjects.put(beanName, singletonObject);
+                        // 从三级缓存singletonFactories中移除
+                        this.singletonFactories.remove(beanName);
+                    }
+                }
+            }
+        }
+        return singletonObject != NULL_OBJECT ? singletonObject : null;
+    }
+    ......
+}
+```
+循环依赖流程示例：  
+```Java
+@Component
+public class A {
+    @Autowired
+    private B b;
+}
+```
+```Java
+@Component
+public class B {
+    @Autowired
+    private A a;
+}
+```
+===> Spring容器启动  
+===> 调用A的无参构造创建出a对象   
+===> 执行addSingletonFactory将a对象曝光到三级缓存singletonFactories中  
+===> 执行populateBean对a的依赖属性进行填充  
+===> 发现A依赖了B  
+===> 执行getSingleton尝试获取B的对象  
+===> 从一级缓存singletonObjects去获取B对象，发现没有、并且也不是处于正在创建中  
+===> 调用B的无参构造创建出b对象  
+===> 执行addSingletonFactory将b对象曝光到三级缓存singletonFactories中  
+===> 执行populateBean对b的依赖属性进行填充  
+===> 发现B依赖了A  
+===> 执行getSingleton尝试获取A的对象  
+===> 从一级缓存singletonObjects去获取A对象，发现没有、但A对象处于正在创建中  
+===> 尝试从二级缓存earlySingletonObjects中去获取A对象，二级缓存中也没有A对象   
+===> 从三级缓存singletonFactories中去获取，获取到了A对象  
+===> B对象完成依赖属性填充、完成初始化  
+===> 将B对象放到一级缓存singletonObjects中  
+===> A对象完成依赖属性填充、完成初始化  
+
+通过三级缓存Spring可以解决bean属性循环依赖的问题，但不能解决构造循环依赖的问题，  
+例如：A的构造方法中依赖了B的实例对象，同时B的构造方法中依赖了A的实例对象，因为singletonFactories三级缓存的前提是执行了构造方法。
